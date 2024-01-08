@@ -1,0 +1,1 @@
+print("Im Miji and I like mushrooms")
