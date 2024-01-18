@@ -33,7 +33,7 @@ class Visualization:
         fig.text(0.02, 0.25, 'H: imm', color='purple', fontsize=14)
         plt.subplots_adjust(left=0.3)
 
-    def update(self, t, mosquitoPopulation, humanPopulation):
+    def update(self, t, lynxPopulation, HaresPopulation):
         """
         Updates the data array, and draws the data.
         """
@@ -44,19 +44,12 @@ class Visualization:
         Visualizes the susceptible, infected and immune humans (-1, -2, -3)
         respectively.
         """
-        for m in mosquitoPopulation:
-            if m.infected:
-                grid[m.position[0]][m.position[1]] = 2
-            else:
-                grid[m.position[0]][m.position[1]] = 1
+        for l in lynxPopulation:
+            grid[l.position[0]][l.position[1]] = 1
 
-        for h in humanPopulation:
-            if h.state == 'S':
-                grid[h.position[0]][h.position[1]] = -1
-            elif h.state == 'I':
-                grid[h.position[0]][h.position[1]] = -2
-            else:
-                grid[h.position[0]][h.position[1]] = -3
+
+        for h in HaresPopulation:
+            grid[h.position[0]][h.position[1]] = -1
 
         self.im.set_data(grid)
 
