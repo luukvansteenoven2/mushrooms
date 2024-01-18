@@ -11,7 +11,7 @@ import vis_code_luuk
 
 
 class Model:
-    def __init__(self, width=50, height=50, nHares=10, nLynx=20, killProb=1.0):
+    def __init__(self, width=50, height=50, nHares=1, nLynx=10, killProb=1.0):
         """
         Model parameters
         Initialize the model with the width and height parameters.
@@ -28,6 +28,7 @@ class Model:
         To record the evolution of the model
         """
         self.deathCount = 0
+        self.HaresDeathCount = 0
         # etc.
 
         """
@@ -35,7 +36,7 @@ class Model:
         Make a data structure in this case a list with the humans and mosquitos.
         """
         self.HaresPopulation = self.set_hare_population()
-        self.lynxPopulation = self.set_lynx_population()
+        self.LynxPopulation = self.set_lynx_population()
 
     def set_hare_population(self):
         """
@@ -66,7 +67,7 @@ class Model:
             x = np.random.randint(self.width)
             y = np.random.randint(self.height)
 
-            lynxPopulation.append(Lynx(x, y))
+            lynxPopulation.append(Lynx(x, y, self))
         return lynxPopulation
 
     def update(self):
@@ -78,38 +79,42 @@ class Model:
         2.  Update the human population. If a human dies remove it from the
             population, and add a replacement human.
         """
-        for i, l in enumerate(self.lynxPopulation):
+        for i, l in enumerate(self.LynxPopulation):
             l.move(self.height, self.width)
             for h in self.HaresPopulation:
-                if l.position == h.position and np.random.uniform() <= self.killProb:
-                    l.bite(h, self.killProb)
+                if abs(l.position[0] - h.position[0]) < 5 and abs(l.position[1] - h.position[1]) < 5:
+                    l.hunt(h, self.killProb)
         """
         To implement: set the hungry state from false to true after a
                      number of time steps has passed.
         """
 
-        #for j, h in enumerate(self.humanPopulation):
-        #    """
-        #    To implement: update the human population.
-        #    """
+        for j, h in enumerate(self.HaresPopulation):
+            h.move(self.height, self.width)
+            """
+            To implement: update the human population.
+            """
 
         """
         To implement: update the data/statistics e.g. infectedCount,
-                      deathCount, etc.
+                      HaresDeathCount, etc.
         """
-        return self.deathCount
+        
+        
+        return self.HaresDeathCount
 
 
 class Lynx:
-    def __init__(self, x, y):
+    def __init__(self, x, y, model):
         """
         Class to model the lynx. Each lynx is initialized with a random
         position on the grid.
         """
         self.position = [x, y]
+        self.model = model
         #self.hungry = 
 
-    def bite(self, hare, killProb):
+    def hunt(self, hare, killProb):
         """
         Function that handles the biting. If the mosquito is infected and the
         target human is susceptible, the human can be infected.
@@ -118,7 +123,8 @@ class Lynx:
         After a mosquito bites it is no longer hungry.
         """
         if np.random.uniform() <= killProb:
-            return
+            self.model.HaresDeathCount += 1 
+            self.model.HaresPopulation.remove(hare)
         
         return
 
@@ -148,6 +154,25 @@ class Hare:
         self.position = [x, y]
         self.state = state
 
+    def move(self, height, width):
+        """
+        Moves the mosquito one step in a random direction.
+        """
+        deltaX = np.random.randint(-1, 2)
+        deltaY = np.random.randint(-1, 2)
+        """
+        The mosquitos may not leave the grid. There are two options:
+                      - fixed boundaries: if the mosquito wants to move off the
+                        grid choose a new valid move.
+                      - periodic boundaries: implement a wrap around i.e. if
+                        y+deltaY > ymax -> y = 0. This is the option currently implemented.
+        """
+        self.position[0] = (self.position[0] + deltaX) % width
+        self.position[1] = (self.position[1] + deltaY) % height
+
+
+
+
 
 if __name__ == '__main__':
     """
@@ -165,10 +190,11 @@ if __name__ == '__main__':
     vis = vis_code_luuk.Visualization(sim.height, sim.width)
     print('Starting simulation')
     while t < timeSteps:
-        #[d1, d2] = sim.update()  # Catch the data
-        #line = str(t) + ',' + str(d1) + ',' + str(d2) + '\n'  # Separate the data with commas
+        #[d1] = sim.update()  # Catch the data
+        #line = str(t) + ',' + str(d1) + ',' + '\n'  # Separate the data with commas
         #file.write(line)  # Write the data to a .csv file
-        vis.update(t, sim.lynxPopulation, sim.HaresPopulation)
+        sim.update()
+        vis.update(t, sim.LynxPopulation, sim.HaresPopulation)
         t += 1
     file.close()
     vis.persist()

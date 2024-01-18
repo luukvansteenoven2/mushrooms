@@ -26,11 +26,11 @@ class Visualization:
         Color information
         """
         fig = plt.gcf()
-        fig.text(0.02, 0.5, 'M: inf', color='red', fontsize=14)
-        fig.text(0.02, 0.45, 'M: not-inf', color='orange', fontsize=14)
-        fig.text(0.02, 0.35, 'H: sus', color='cyan', fontsize=14)
-        fig.text(0.02, 0.3, 'H: inf', color='blue', fontsize=14)
-        fig.text(0.02, 0.25, 'H: imm', color='purple', fontsize=14)
+        #fig.text(0.02, 0.5, 'M: inf', color='red', fontsize=14)
+        #fig.text(0.02, 0.45, 'M: not-inf', color='orange', fontsize=14)
+        #fig.text(0.02, 0.35, 'H: sus', color='cyan', fontsize=14)
+        fig.text(0.02, 0.3, 'H: Lynx', color='orange', fontsize=14)
+        fig.text(0.02, 0.25, 'H: Hare', color='blue', fontsize=14)
         plt.subplots_adjust(left=0.3)
 
     def update(self, t, lynxPopulation, HaresPopulation):
@@ -49,7 +49,7 @@ class Visualization:
 
 
         for h in HaresPopulation:
-            grid[h.position[0]][h.position[1]] = -1
+            grid[h.position[0]][h.position[1]] = -2
 
         self.im.set_data(grid)
 
