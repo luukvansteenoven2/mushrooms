@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 
 
 class Visualization:
-    def __init__(self, height, width, pauseTime=0.1):
+    def __init__(self, height, width, pauseTime=0.5):
         """
         This simple visualization shows the population of mosquitos and humans.
         Each subject is color coded according to its state.
@@ -29,8 +29,8 @@ class Visualization:
         #fig.text(0.02, 0.5, 'M: inf', color='red', fontsize=14)
         #fig.text(0.02, 0.45, 'M: not-inf', color='orange', fontsize=14)
         #fig.text(0.02, 0.35, 'H: sus', color='cyan', fontsize=14)
-        fig.text(0.02, 0.3, 'H: Lynx', color='orange', fontsize=14)
-        fig.text(0.02, 0.25, 'H: Hare', color='blue', fontsize=14)
+        fig.text(0.02, 0.3, 'Lynx', color='orange', fontsize=14)
+        fig.text(0.02, 0.25, 'Hare', color='blue', fontsize=14)
         plt.subplots_adjust(left=0.3)
 
     def update(self, t, lynxPopulation, HaresPopulation):
@@ -55,7 +55,7 @@ class Visualization:
 
         plt.draw()
         plt.title('t = %i' % t)
-        plt.pause(0.1)
+        plt.pause(0.01)
 
     def persist(self):
         """

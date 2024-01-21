@@ -1,396 +1,356 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jan  8 11:19:04 2024
+Created on Mon Jan  8 14:18:46 2024
 
-@author: trist
+@author: luukv
 """
-
-print("I am Tristan I like mushrooms too")
 
 import matplotlib.pyplot as plt
 import numpy as np
+import vis_code_luuk
 
-seed = 160
-
-def randint(a=1664525, c=1013904223, m=2**32):
-    global seed
-    seed = (a * seed + c) % m
-    return seed
-
-def rand():
-    r_int = randint()
-    return r_int/(2**32)
-
-def drawing_with_replacement(data,n=10**2):
-    new_sample = list(range(n))
-    for i in range(n):
-        new_sample[i] = data[int(rand()*len(data))]
-    return new_sample
-
-class Model:
-    def __init__(self, width=50, height=50, nPredator=100, nPrey=500,
-                 initPredatorHungry=0.5, biteProb=0.8):
+class Model: 
+    def __init__(self, width=100, height=100, nHares=700, nLynx=4, huntDistance=5, killProb=0.5, breedDistLynx = 3, breedDistHares = 0, breedProbHares = 0.01, breedProbLynx = 0.1):
         """
         Model parameters
         Initialize the model with the width and height parameters.
         """
         self.height = height
         self.width = width
-        self.nPredator = nPredator
-        self.nPrey = nPrey
-        self.biteProb = biteProb
-        self.PredatorHungry = initPredatorHungry ## Percentage of predators that are hungry from start
-        self.list_indexes_not_had = []
-        self.mortality_rate = 0.001
-        
-        # We make a list with all possible grid positions
-        for i in range(self.width):
-            for j in range(self.height):
-                self.list_indexes_not_had.append([i,j])
-        
-        self.time_alive = [0] * nPrey
-        
+        self.nHares = nHares
+        self.nLynx = nLynx
+        self.killProb = killProb
+        self.breedDistLynx = breedDistLynx
+        self.breedDistHares = breedDistHares
+        self.breedProbHares = breedProbHares
+        self.breedProbLynx = breedProbLynx
+        self.huntDistance = huntDistance
+        # etc. 
 
         """
         Data parameters
         To record the evolution of the model
         """
-        self.bornPreyCount = 0
-        self.deathPreyCount = 0
-        self.bornPredatorCount = 0
-        self.deathPredatorCount = 0
+        self.LynxDeathCount = 0
+        self.HaresDeathCount = 0
+        # etc.
 
         """
         Population setters
-        Make a data structure in this case a list with the Predators and Preys.
+        Make a data structure in this case a list with the hares and lynx.
         """
-        self.PredatorPopulation = self.set_predator_population(nPredator)
-        self.PreyPopulation = self.set_prey_population(nPrey)
+        self.HaresPopulation = self.set_hare_population()
+        self.LynxPopulation = self.set_lynx_population()
 
-    def set_prey_population(self):
+    def set_hare_population(self):
         """
-        This function makes the initial Prey population, by iteratively adding
-        an object of the Prey class to the PreyPopulation list.
-        The position of each Prey object is randomized. 
+        This function makes the initial Hare population, by iteratively adding
+        an object of the Hare class to the harePopulation list.
+        The position of each Hare object is randomized.
         """
-        
-        PreyPopulation = []
-        for i in range(self.nPrey):
+        harePopulation = []
+        for i in range(self.nHares):
+            x = np.random.randint(self.width)
+            y = np.random.randint(self.height)
             """
-            Preys may not have overlapping positions.
+            Hares may have overlapping positions.
             """
-            # When we generate a new Prey, we get their position and we take their current position out of our grid list
-            x_y = drawing_with_replacement(self.list_indexes_not_had,1)
-            x = x_y[0][0]
-            y = x_y[0][1]
-            self.list_indexes_not_had.remove(x_y[0])   
-            state = 'A'  # A for alive
-                 
-            # We add the Predator we 'created' to our population
-            PreyPopulation.append(Prey(x, y, state))
-        return PreyPopulation
-
-
-    def set_predator_population(self, initPredatorHungry):
-        """
-        This function makes the initial Predator population, by iteratively
-        adding an object of the Predator class to the PredatorPopulation list.
-        The position of each Predator object is randomized.
-        A number of Predator objects is initialized with the "hungry" state.
-        """
-        PredatorPopulation = []
-        for i in range(self.nPredator):
-            # When we generate a new Predator, we get their position and we take their current position out of our grid list
-            x_y = drawing_with_replacement(self.list_indexes_not_had,1)
-            x = x_y[0][0]
-            y = x_y[0][1]
-            self.list_indexes_not_had.remove(x_y[0])  
-            if (i / self.nPredator) <= initPredatorHungry: # See wether the Predator is hungry or not 
-                hungry = True
+            if np.random.uniform() < 0.5:
+                state = 'M'  # M for male
             else:
-                hungry = False
-            
-            state = 'A'  # A for alive
+                state = 'F' # F for female
+            time_born = 0
                 
-            PredatorPopulation.append(Predator(x, y, hungry, state))
-        return PredatorPopulation
+            harePopulation.append(Hare(x, y, state, self, time_born))
+        return harePopulation
+
+    def set_lynx_population(self):
+        """
+        This function makes the initial lynx population, by iteratively
+        adding an object of the Lynx class to the lynxPopulation list.
+        The position of each Mosquito object is randomized.
+        """
+        lynxPopulation = []
+        for i in range(self.nLynx):
+            x = np.random.randint(self.width)
+            y = np.random.randint(self.height)
+            if np.random.uniform() < 0.5:
+                state = 'M'  # M for male
+            else:
+                state = 'F' # F for female
+            
+            time_born = 0
+            hungry = 0
+            time_hungry = 0
+
+            lynxPopulation.append(Lynx(x, y, state, self, time_born, hungry, time_hungry))
+        return lynxPopulation
 
     def update(self):
         """
         Perform one timestep:
-        1.  Update Predator population. Move the Predators. If a Predator is
-            hungry it can bite a Prey with a probability biteProb.
-            Update the hungry state of the Predators.
-        2.  Update the Prey population. If a Prey dies remove it from the
-            population, and add a replacement Prey.
-        """
-        ## In here we let a predator bite a prey when they are in the same grid, the predator is faster and moves first!
-        for i, predator in enumerate(self.PredatorPopulation):
-            predator.move(self.height, self.width)
-            for prey in self.PreyPopulation:
-                if predator.position == prey.position and predator.hungry\
-                   and np.random.uniform() <= self.biteProb:
-                     predator.bite(prey)
-                    
-        """
-        Set the hungry state from false to true after a
-                     number of time steps has passed.
+        1.  Update hares population. Move the hares. If a lynx is
+            hungry it can bite a hares with a probability biteProb.
+            Update the hungry state of the hares.
+        2.  Update the lynx population. If a lynx dies remove it from the
+            population, and add a replacement lynx.
         """
         
-        for i, predator in enumerate(self.PredatorPopulation):
+        for i, l in enumerate(self.LynxPopulation):
+            l.move(self.height, self.width)
+            l.time_born += 1
             
-            # We implement that after a certain time steps a predator gets hungry again, by checking the time they have been not hungry yet.
-            predator.time_not_hungry += 1
-            if predator.hungry == True:
-                predator.count_hungry += 1
-            if predator.time_not_hungry == self.time_before_hungry:
-                predator.hungry = True
-                predator.time_not_hungry = 0
+            if l.time_born == 60: ## After a year
+                if np.random.uniform() < 0.5:
+                    l.state = 'M' 
+                else:
+                    l.state = 'F'
         
-        for j, prey in enumerate(self.PreyPopulation):
-            """
-            Update the Prey population.
-            """      
-            # If the prey is bitten, they should be removed from the model, since they are dead (now for ease we just add a new one instead of generating birth):
-            if prey.state == 'D':
-                self.PreyPopulation.remove(prey)
-                self.list_indexes_not_had.append(prey.position)
-                
-                x_y = drawing_with_replacement(self.list_indexes_not_had,1)
-                x = x_y[0][0]
-                y = x_y[0][1]
-                
-                self.list_indexes_not_had.remove(x_y[0])   
-                state = 'A'  # A for alive
-                     
-                # We add the Predator we 'created' to our population
-                self.PreyPopulation.append(Prey(x, y, state))
-                
-            # We consider the alive preys
-            if prey.state == 'A':
-                
-                # Our time that prey has been alive gets updated. Per time step.
-                self.time_alive[j] += 1
-                
-            # A prey always has a random chance of dying 
-                # We check wether the prey dies or not
-                if np.random.uniform() <= self.mortality_rate/timeSteps:
-                    
-                    # If they die, we delete the prey, regenerate one and update everything else
-                    prey.state = 'D'
-                    self.deathPreyCount += 1
-                    self.PreyPopulation.remove(prey)
-                    self.list_indexes_not_had.append(prey.position)
-                    
-                    x_y = drawing_with_replacement(self.list_indexes_not_had,1)
-                    x = x_y[0][0]
-                    y = x_y[0][1]
-                    
-                    self.list_indexes_not_had.remove(x_y[0])   
-                    state = 'A'  # A for alive
-                         
-                    # We add the Predator we 'created' to our population
-                    self.PreyPopulation.append(Prey(x, y, state))
-            
-        """
-        Update how there are new predators and preys born (delete whats up here than)
-        """
-            # Now check how they repopulate (dependant on what Miji told us, just forget for now)
-                    
-        """
-        How the predators die (we assume they die if not eaten in time or just mortality rate)
-        """
-        # First we will look wether the predator has eaten in time
-        for k, predator in enumerate(self.PredatorPopulation):
-            
-            if predator.state == 'A' and predator.count_hungry > 100: ## Determine self how many steps they need to be hungry to die
-                predator.state = 'D'
-                self.deathPredatorCount +=1
-                
-                # Again we remove it from the list and for ease immediately add a new one (again dependent on mijis method of reproducibility)
-                self.PredatorPopulation.remove(predator)
-                self.list_indexes_not_had.append(predator.position)
-                
-                x_y = drawing_with_replacement(self.list_indexes_not_had,1)
-                x = x_y[0][0]
-                y = x_y[0][1]
-                
-                if (i / self.nPredator) <= self.initPredatorHungry: # See wether the Predator is hungry or not 
-                    hungry = True
-                else:
-                    hungry = False
-                
-                self.list_indexes_not_had.remove(x_y[0])   
-                state = 'A'  # A for alive
-                     
-                # We add the Predator we 'created' to our population
-                self.PredatorPopulation.append(Predator(x, y, hungry, state))
-                
-        # Now we will assume that they also have a mortality rate 
-            # We check wether the predator dies or not
-            if predator.state == 'A' and np.random.uniform() <= self.mortality_rate/timeSteps:
-                
-                # If they die, we delete the predator, regenerate one and update everything else
-                predator.state = 'D'
-                self.deathPredatorCount += 1
-                self.PredatorPopulation.remove(prey)
-                self.list_indexes_not_had.append(predator.position)
-                
-                x_y = drawing_with_replacement(self.list_indexes_not_had,1)
-                x = x_y[0][0]
-                y = x_y[0][1]
-                
-                if (i / self.nPredator) <= self.initPredatorHungry: # See wether the Predator is hungry or not 
-                    hungry = True
-                else:
-                    hungry = False
-                
-                self.list_indexes_not_had.remove(x_y[0])   
-                state = 'A'  # A for alive
-                     
-                # We add the Predator we 'created' to our population
-                self.PredatorPopulation.append(Predator(x, y, hungry, state))
+            for h in self.HaresPopulation:
+                if abs(l.position[0] - h.position[0]) <= self.huntDistance and abs(l.position[1] - h.position[1] <= self.huntDistance): # adjust to closeby 
+                    if l.state == 'M' or l.state == 'F' or l.state == 'B':
+                        l.hunt(h, self.killProb)
 
+        for j, h in enumerate(self.HaresPopulation):
+            """
+            Update the hares population. Let them all move around. Also add when a hare
+            is old enough and becomes an adult (either female or male).
+            """
+            h.move(self.height,self.width)
+            if h.state == 'B':
+                h.time_born += 1
+            if h.time_born == 30: ## After a month
+                if np.random.uniform() < 0.5:
+                    h.state = 'M' 
+                else:
+                    h.state = 'F'
+                               
+        for j, h1 in enumerate(self.HaresPopulation):
+            """
+            Update the population of hares, let them reproduce if possible.
+            """
+            for k, h2 in enumerate(self.HaresPopulation): 
+                if h1.position == h2.position and h1.state == "M" and h2.state == "F" \
+                    and (t - h1.lastbreed and t - h2.lastbreed) > 30:
+                        h1.breed(h2, self.breedProbHares)
+
+        
+        for m, l1 in enumerate(self.LynxPopulation):
+            """
+            Update the population of lynx, let them reproduce if possible.
+            """
+            for n, l2 in enumerate(self.LynxPopulation):
+                if abs(l1.position[0] - l1.position[0]) <= self.breedDistLynx \
+                    and abs(l1.position[1] - l2.position[1] <= self.breedDistLynx) \
+                        and l1.state == 'M' and l2.state == 'F' \
+                            and ((t - l1.lastbreed and t - l2.lastbreed) > 90 or l1.lastbreed==l2.lastbreed==0):
+                    l1.breed(l2, self.breedProbLynx)
+                
+                            
         """
         Update the data/statistics e.g. infectedCount,
                       deathCount, etc.
+        Reset the Lynx to be hungry again
+        Lynx die of starvation if not eaten enough
         """
-        
-        return self.deathPreyCount, self.deathPredatorCount, self.bornPreyCount, self.bornPredatorCount
-    
+        eaten_list = []
+        saturation_list = []
+        for o, l in enumerate (self.LynxPopulation):
+            l.eathistory.append(l.hungry)
+            eaten_list.append(l.eathistory[-1:])
+            
+            saturation_list.append(sum(l.eathistory[-30:]))
+            
+            if sum(l.eathistory[-30:]) < 7 and l.time_born > 30:
+                self.LynxDeathCount += 1
+                self.LynxPopulation.remove(l)
+                    
+            l.hungry = 0
+          
+        PreyAvailability = np.mean(eaten_list)
+        SaturationLynx = np.mean(saturation_list)
+        return len(self.LynxPopulation), len(self.HaresPopulation), PreyAvailability, SaturationLynx
 
 
-class Predator:
-    def __init__(self, x, y, hungry, state):
+class Lynx:
+    def __init__(self, x, y, state, model, time_born, hungry, time_hungry):
         """
-        Class to model the Predators. Each Predator is initialized with a random
-        position on the grid. Predators can start out hungry or not hungry.
+        Class to model the lynx. Each lynx is initialized with a random
+        position on the grid.
         """
         self.position = [x, y]
-        self.hungry = hungry
-        self.time_not_hungry = 0 ## After a certain while the predators become hungry
+        self.model = model
         self.state = state
-        self.count_hungry = 0 ## Counts for how long they have been hungry
+        self.time_born = time_born
+        self.hungry = hungry
+        self.time_hungry = time_hungry
+        self.eathistory = []
+        self.lastbreed = 0
 
-    def bite(self, prey):
+    def hunt(self, hare, killProb):
         """
-        Function that handles the biting. 
-        After a Predator bites it is no longer hungry.
+        Function that handles the biting. If the hares is infected and the
+        target hares is susceptible, the hares can be infected.
+        If the lynx is not infected and the target hares is infected, the
+        lynx can be infected.
+        After a hares hunts and kills, it will add its hares to its eaten tally. If it has
+        eaten 3 hares, it wont kill any other hares nearby.
         """
-        if prey.state == 'A':
-            prey.state = 'D'
-            self.deathPreyCount +=1
-        self.hungry = False
-        self.count_hungry = 0
+        if np.random.uniform() <= killProb and self.hungry < 1:
+            self.model.HaresDeathCount += 1
+            self.model.HaresPopulation.remove(hare)
+            self.hungry +=1
+            self.time_hungry = 0
 
-    def move(self, height, width): ## Still need to adjust to hunt towards prey 
+
+    def move(self, height, width):
         """
-        Moves the Predator one step in a random direction.
+        Moves the lynx one step in a random direction.
+        """
+        speed_increase=1
+        self.huntDistance = 4
+        
+        deltaX = np.random.randint(-3, 4)
+        deltaY = np.random.randint(-3, 4)
+        
+        if np.sum(self.eathistory[-10:]) < 3 and self.time_born > 10:
+            self.huntDistance = 6
+            
+        if np.sum(self.eathistory[-20:]) < 7 and self.time_born > 20:
+            if np.random.uniform() < 0.2:
+                speed_increase = 2
+            self.huntDistance= 8
+        """
+        The hares may not leave the grid. There are two options:
+                      - fixed boundaries: if the lynx wants to move off the
+                        grid choose a new valid move.
+                      - periodic boundaries: implement a wrap around i.e. if
+                        y+deltaY > ymax -> y = 0. This is the option currently implemented.
+        """
+        if self.time_born % 7 == 0:
+            self.xdirection = deltaX
+            self.ydirection = deltaY
+        
+        self.position[0] = (self.position[0] + self.xdirection*speed_increase) % width
+        self.position[1] = (self.position[1] + self.ydirection*speed_increase) % height
+    
+    def breed(self, lynx2, breedProbLynx):
+        """
+        Determines whether two nearby female and male lynx actually reproduce or not.
+        """
+        if np.random.uniform() <= breedProbLynx:
+            x = self.position[0]
+            y = self.position[1]
+            """
+            Lynx may have overlapping positions.
+            """
+            
+            self.lastbreed = 1 if t==0 else t
+            lynx2.lastbreed = 1 if t==0 else t
+            
+            state = 'B'  # B for baby
+            time_born = 0
+            hungry = 0
+            time_hungry = 0
+            self.model.LynxPopulation.append(Lynx(x, y, state, self.model, time_born, hungry, time_hungry))
+
+
+class Hare:
+    def __init__(self, x, y, state, model, time_born):
+        """
+        Class to model the hares. Each hare is initialized with a random
+        position on the grid. Hares start out neutral for now.
+        """
+        self.position = [x, y]
+        self.state = state
+        self.model = model
+        self.time_born = 0
+        self.lastbreed = 0
+     
+    def move(self, height, width):
+        """
+        Moves the hares one step in a random direction.
         """
         deltaX = np.random.randint(-1, 2)
         deltaY = np.random.randint(-1, 2)
         """
-        The Predators may not leave the grid. There are two options:
-                      - fixed boundaries: if the Predator wants to move off the
+        The hares may not leave the grid. There are two options:
+                      - fixed boundaries: if the hares wants to move off the
                         grid choose a new valid move.
                       - periodic boundaries: implement a wrap around i.e. if
                         y+deltaY > ymax -> y = 0. This is the option currently implemented.
         """
         self.position[0] = (self.position[0] + deltaX) % width
         self.position[1] = (self.position[1] + deltaY) % height
-
-
-class Prey: ## Also add movement that it moves away from predator
-    def __init__(self, x, y, state):
+    
+    def breed(self, hare2, breedProbHares):
         """
-        Class to model the Preys. Each Prey is initialized with a random
-        position on the grid. 
+        Determines whether two nearby female and male hares actually reproduce or not.
         """
-        self.position = [x, y]
-        self.state = state
-
-
+        if np.random.uniform() <= breedProbHares:
+            x = self.position[0]
+            y = self.position[1]
+            """
+            Hares may have overlapping positions.
+            """
+            self.lastbreed = t
+            hare2.lastbreed = t
+            
+            state = 'B'  # B for baby
+            time_born = 0
+            self.model.HaresPopulation.append(Hare(x, y, state, self.model, time_born))
+            
 
 if __name__ == '__main__':
-    import time
-    start_time = time.time()
     """
     Simulation parameters
     """
     fileName = 'simulation'
-    
-    # We had a loop for the parameter selection, but for visualization we just take in account one plot.
-    n = 1
-    infections = []
-    for _ in range(n): 
-        timeSteps = 250
-        t = 0
-        plotData = True
-        
-        last_infected = []
-        """
-        Run a simulation for an indicated number of timesteps.
-        """
-        file = open(fileName + '.csv', 'w')
-        
-        # We get the simullation model with the right parameters
-        sim = Model(width=50, height=50, nHuman=1000, nMosquito=500,
-                     initMosquitoHungry=0.6, initHumanInfected=0.02,
-                     humanInfectionProb=0.6, mosquitoInfectionProb=0.2,
-                     biteProb=1.0, case_fatality=0.05, prob_mosquito_starts_infected=0.1, 
-                     mosquito_net_bite=0.46, mosquito_net_amount = 1000, vaccin_amount = 1, 
-                     vaccin_rate = 0.66)
-        
-        #vis = malaria_visualize.Visualization(sim.height, sim.width)
-        print('Starting simulation')
-        while t < timeSteps:
-            [d1, d2] = sim.update()  # Catch the data
-            line = str(t) + ',' + str(d1) + ',' + str(d2) + '\n'  # Separate the data with commas
-            file.write(line)  # Write the data to a .csv file
-            #vis.update(t, sim.mosquitoPopulation, sim.humanPopulation)
-            sim.update()
-    
-            t += 1
+    timeSteps = 400
+    t = 0
+    plotData = True
+    """
+    Run a simulation for an indicated number of timesteps.
+    """
+    file = open(fileName + '.csv', 'w')
+    sim = Model(breedProbHares=0.9, breedProbLynx=0.7, nHares=1500, nLynx = 6, killProb=1, \
+                huntDistance=5, breedDistLynx=20, breedDistHares=1)
+    vis = vis_code_luuk.Visualization(sim.height, sim.width)
+    print('Starting simulation')
+    while t < timeSteps:
+        [d1, d2, d3, d4] = sim.update()  # Catch the data
+        sim.update()  # Catch the data
+        line = str(t) + ',' + str(d1) + ',' + str(d2) + ',' + str(d3) + ',' + str(d4) +  '\n'  # Separate the data with commas
+        file.write(line)  # Write the data to a .csv file
+        vis.update(t, sim.LynxPopulation, sim.HaresPopulation)
+        t += 1
+    file.close()
+    vis.persist()
 
-                
-        file.close()
-    #vis.persist()
-    
+    if plotData:
+        """
+        Make a plot by from the stored simulation data.
+        """
         data = np.loadtxt(fileName+'.csv', delimiter=',')
+        time = data[:, 0]
+        LynxAmount = data[:, 1]
+        HaresAmount = data[:, 2]
+        PreyAvailability = data[:, 3]
+        LynxSaturation = data[:, 4]
         
-        # We get the mean amount of the last 50 values for infected count
-        infectedCount = data[:, 1]    
-        infections.append(np.mean(infectedCount[-50:]))
+        fig, (ax1, ax2, ax3, ax4) = plt.subplots(4, 1, sharex=True, figsize=(10, 6))
 
-        if plotData:
-            """
-            Make a plot by from the stored simulation data.
-            """
-            data = np.loadtxt(fileName+'.csv', delimiter=',')
-            time = data[:, 0]
-            infectedCount = data[:, 1]
-            deathCount = data[:, 2]
-            
-            rounded_mean_infected = np.mean(infections)
-            print(f"The mean is : {rounded_mean_infected}")
-            
-            # We plot everything we want, infectedcount, deathcount and the mean value line.
-            plt.figure()
-            plt.plot(time, infectedCount, label='infected')
-            plt.plot(time, deathCount, label='deaths')
+        ax1.plot(time, LynxAmount, label='Lynx Population')
+        ax1.legend()
 
-            plt.axhline(y=round(np.mean(infectedCount[-50:]),1), color='r', linestyle='--', label='mean # infected over the last 50 timesteps')
-            plt.xlabel('timesteps')
-            plt.ylabel('amount')
-            
-            plt.text(x=30, y=rounded_mean_infected + 1, s=f'y = {rounded_mean_infected}', va='bottom', ha='right', color='r')
-           
-            plt.grid(True, linestyle=':')
-            
-            plt.legend()
-            plt.show()
-
-    print(f"Mean infections: {np.mean(infections)}")
-import time
-end_time = time.time()
-print(f"Time to run: {end_time - start_time}")
+        ax2.plot(time, HaresAmount, label='Hazes Population')
+        ax2.legend()
+        
+        ax3.plot(time, PreyAvailability, label='Prey Availability')
+        ax3.legend()
+        
+        ax4.plot(time, LynxSaturation, label='Lynx Saturation')
+        ax4.legend()
+        
+        plt.tight_layout()
+        plt.show()

@@ -11,7 +11,7 @@ import vis_code_luuk
 
 
 class Model:
-    def __init__(self, width=50, height=50, nHares=1, nLynx=10, killProb=1.0):
+    def __init__(self, width=50, height=50, nHares=100, nLynx=1, hunt_range=3, killProb=1.0):
         """
         Model parameters
         Initialize the model with the width and height parameters.
@@ -20,14 +20,18 @@ class Model:
         self.width = width
         self.nHares = nHares
         self.nLynx = nLynx
+        self.hunt_range = hunt_range
         self.killProb = killProb
+        
+        self.time = 0
+        
         # etc.
 
         """
         Data parameters
         To record the evolution of the model
         """
-        self.deathCount = 0
+        self.LynxDeathCount = 0
         self.HaresDeathCount = 0
         # etc.
 
@@ -80,9 +84,12 @@ class Model:
             population, and add a replacement human.
         """
         for i, l in enumerate(self.LynxPopulation):
-            l.move(self.height, self.width)
+            l.move(self.height, self.width) # move the Lynx to a different place
+            
+            l.hares_eaten_day = 0 # reset the amount of hares eaten this day
+            
             for h in self.HaresPopulation:
-                if abs(l.position[0] - h.position[0]) < 5 and abs(l.position[1] - h.position[1]) < 5:
+                if abs(l.position[0] - h.position[0]) <= self.hunt_range and abs(l.position[1] - h.position[1]) <= self.hunt_range:
                     l.hunt(h, self.killProb)
         """
         To implement: set the hungry state from false to true after a
@@ -100,8 +107,9 @@ class Model:
                       HaresDeathCount, etc.
         """
         
+        self.time +=1
         
-        return self.HaresDeathCount
+        return len(self.LynxPopulation), len(self.HaresPopulation), self.time
 
 
 class Lynx:
@@ -112,6 +120,9 @@ class Lynx:
         """
         self.position = [x, y]
         self.model = model
+        self.hares_eaten_day = 0
+        self.hares_eaten_month = 0
+        
         #self.hungry = 
 
     def hunt(self, hare, killProb):
@@ -125,7 +136,9 @@ class Lynx:
         if np.random.uniform() <= killProb:
             self.model.HaresDeathCount += 1 
             self.model.HaresPopulation.remove(hare)
-        
+            self.hares_eaten_day += 1 
+            self.hares_eaten_month += 1 
+            
         return
 
     def move(self, height, width):
@@ -179,9 +192,9 @@ if __name__ == '__main__':
     Simulation parameters
     """
     fileName = 'simulation'
-    timeSteps = 50
+    timeSteps = 300
     t = 0
-    plotData = False
+    plotData = True
     """
     Run a simulation for an indicated number of timesteps.
     """
@@ -190,9 +203,9 @@ if __name__ == '__main__':
     vis = vis_code_luuk.Visualization(sim.height, sim.width)
     print('Starting simulation')
     while t < timeSteps:
-        #[d1] = sim.update()  # Catch the data
-        #line = str(t) + ',' + str(d1) + ',' + '\n'  # Separate the data with commas
-        #file.write(line)  # Write the data to a .csv file
+        [d1, d2, d3] = sim.update()  # Catch the data
+        line = str(t) + ',' + str(d1) + ',' + str(d2) + ',' + str(d3) + '\n'  # Separate the data with commas
+        file.write(line)  # Write the data to a .csv file
         sim.update()
         vis.update(t, sim.LynxPopulation, sim.HaresPopulation)
         t += 1
@@ -205,10 +218,12 @@ if __name__ == '__main__':
         """
         data = np.loadtxt(fileName+'.csv', delimiter=',')
         time = data[:, 0]
-        infectedCount = data[:, 1]
-        deathCount = data[:, 2]
+        LynxAmount = data[:, 1]
+        HaresAmount = data[:, 2]
+        TimeCreated = data[:, 3]
         plt.figure()
-        plt.plot(time, infectedCount, label='infected')
-        plt.plot(time, deathCount, label='deaths')
+        plt.plot(time, LynxAmount, label='Lynx Population')
+        plt.plot(time, HaresAmount, label='Hazes Population')
+        #plt.plot(time, TimeCreated, label="Time Created")
         plt.legend()
         plt.show()
