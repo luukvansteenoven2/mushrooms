@@ -33,29 +33,34 @@ class Visualization:
         fig.text(0.02, 0.25, 'Hare', color='blue', fontsize=14)
         plt.subplots_adjust(left=0.3)
 
-    def update(self, t, lynxPopulation, HaresPopulation):
+    def update(self, t, lynxPopulation, HaresPopulation, environment):
         """
         Updates the data array, and draws the data.
         """
-        grid = np.zeros((self.w, self.h))
-
+        grid = np.array(environment)  # Initialize the grid with the environment
+        
+        # If mountains are represented by 1 in the environment, you might want to scale it for better visualization
+        # For instance, you might want to make mountains less prominent in the visualization:
+        grid[grid == 1] *= 0.5  # Scale down the mountain representation
+    
         """
-        Visualizes the infected vs non-infected mosquitos (2, 1) respectively.
-        Visualizes the susceptible, infected and immune humans (-1, -2, -3)
-        respectively.
+        Visualize the lynxes, hares, and environment.
+        Lynxes are represented by 2, hares by -2, mountains by a scaled value (e.g., 0.5), and plains by 0.
         """
         for l in lynxPopulation:
-            grid[l.position[0]][l.position[1]] = 1
-
-
+            if grid[l.position[0]][l.position[1]] != 1:  # Only place lynx if it's not a mountain
+                grid[l.position[0]][l.position[1]] = 2
+    
         for h in HaresPopulation:
-            grid[h.position[0]][h.position[1]] = -2
-
+            if grid[h.position[0]][h.position[1]] != 1:  # Only place hare if it's not a mountain
+                grid[h.position[0]][h.position[1]] = -2
+    
         self.im.set_data(grid)
-
+    
         plt.draw()
         plt.title('t = %i' % t)
         plt.pause(0.01)
+
 
     def persist(self):
         """

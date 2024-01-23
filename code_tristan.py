@@ -1,8 +1,8 @@
 # -*- coding: utf-8 -*-
 """
-Created on Mon Jan  8 14:18:46 2024
+Created on Mon Jan 22 13:58:08 2024
 
-@author: luukv
+@author: trist
 """
 
 import matplotlib.pyplot as plt
@@ -10,7 +10,7 @@ import numpy as np
 import vis_code_luuk
 
 class Model: 
-    def __init__(self, width=100, height=100, nHares=700, nLynx=4, huntDistance=5, killProb=0.5, breedDistLynx = 3, breedDistHares = 0, breedProbHares = 0.01, breedProbLynx = 0.1):
+    def __init__(self, width=100, height=100, nHares=500, nLynx=6, killProb=0.8, breedDistLynx = 20, breedDistHares = 1, breedProbHares = 0.1, breedProbLynx = 0.00001, maximumHares = 2500, maximumLynx = 20):
         """
         Model parameters
         Initialize the model with the width and height parameters.
@@ -24,8 +24,8 @@ class Model:
         self.breedDistHares = breedDistHares
         self.breedProbHares = breedProbHares
         self.breedProbLynx = breedProbLynx
-        self.huntDistance = huntDistance
-        # etc. 
+        self.maxLynx = maximumLynx
+        self.maxHares = maximumHares
 
         """
         Data parameters
@@ -33,7 +33,6 @@ class Model:
         """
         self.LynxDeathCount = 0
         self.HaresDeathCount = 0
-        # etc.
 
         """
         Population setters
@@ -41,6 +40,16 @@ class Model:
         """
         self.HaresPopulation = self.set_hare_population()
         self.LynxPopulation = self.set_lynx_population()
+        self.environment = self.initialize_environment()
+
+    def initialize_environment(self):
+        # Initialize your environment grid
+        # For simplicity, 0 could represent plain land, and 1 could represent mountains
+        env = np.zeros((self.height, self.width))
+        # Set up mountains in the environment
+        # This could be random or based on some pattern
+        env[10:40, 30:50] = 1  # creates a 10x10 mountain block
+        return env
 
     def set_hare_population(self):
         """
@@ -59,9 +68,8 @@ class Model:
                 state = 'M'  # M for male
             else:
                 state = 'F' # F for female
-            time_born = 0
                 
-            harePopulation.append(Hare(x, y, state, self, time_born))
+            harePopulation.append(Hare(x, y, state, self))
         return harePopulation
 
     def set_lynx_population(self):
@@ -78,12 +86,8 @@ class Model:
                 state = 'M'  # M for male
             else:
                 state = 'F' # F for female
-            
-            time_born = 0
-            hungry = 0
-            time_hungry = 0
 
-            lynxPopulation.append(Lynx(x, y, state, self, time_born, hungry, time_hungry))
+            lynxPopulation.append(Lynx(x, y, state, self))
         return lynxPopulation
 
     def update(self):
@@ -96,20 +100,32 @@ class Model:
             population, and add a replacement lynx.
         """
         
+        """
+        Neither populations will die out, also there will be a maximum capacity,
+        due to food limitations in reality
+        """
+        if len(self.LynxPopulation) <= 2:
+            for p, l in enumerate(self.LynxPopulation):
+                l.eathistory.append(1)
+        if len(self.HaresPopulation) <= 20:
+            killProbHares = 0
+       # else:
+        killProbHares = self.killProb
+        
         for i, l in enumerate(self.LynxPopulation):
             l.move(self.height, self.width)
             l.time_born += 1
             
-            if l.time_born == 60: ## After a year
+            if l.time_born == 150: ## After a year
                 if np.random.uniform() < 0.5:
                     l.state = 'M' 
                 else:
                     l.state = 'F'
         
             for h in self.HaresPopulation:
-                if abs(l.position[0] - h.position[0]) <= self.huntDistance and abs(l.position[1] - h.position[1] <= self.huntDistance): # adjust to closeby 
+                if abs(l.position[0] - h.position[0]) <= l.huntDistance and abs(l.position[1] - h.position[1] <= l.huntDistance): # adjust to closeby 
                     if l.state == 'M' or l.state == 'F' or l.state == 'B':
-                        l.hunt(h, self.killProb)
+                        l.hunt(h, killProbHares)
 
         for j, h in enumerate(self.HaresPopulation):
             """
@@ -124,56 +140,82 @@ class Model:
                     h.state = 'M' 
                 else:
                     h.state = 'F'
-                               
-        for j, h1 in enumerate(self.HaresPopulation):
-            """
-            Update the population of hares, let them reproduce if possible.
-            """
-            for k, h2 in enumerate(self.HaresPopulation): 
-                if h1.position == h2.position and h1.state == "M" and h2.state == "F" \
-                    and (t - h1.lastbreed and t - h2.lastbreed) > 30:
-                        h1.breed(h2, self.breedProbHares)
-
         
-        for m, l1 in enumerate(self.LynxPopulation):
+        if len(self.HaresPopulation) >= self.maxHares:
+            probbreedHares = self.breedProbHares/(len(self.LynxPopulation)*0.5) * 0.1
+        else:
+            probbreedHares = self.breedProbHares/(len(self.LynxPopulation))
+        
+       # if len(self.LynxPopulation) >= self.maxLynx:
+        #    probbreedLynx = 0
+       # else:
+        probbreedLynx = self.breedProbLynx * (len(self.HaresPopulation)*2)
+        
+                               
+       # for j, h1 in enumerate(self.HaresPopulation):
+       #     """
+       #     Update the population of hares, let them reproduce if possible.
+       #     Let there be a maximum capacity of hares, than the breed probability will be 0
+        #    """
+        #    for k, h2 in enumerate(self.HaresPopulation): 
+       #         if h1.position == h2.position and h1.state == "M" and h2.state == "F" \
+        #            and (t - h1.lastbreed and t - h2.lastbreed) > 30:
+        #                h1.breed(h2, probbreedHares)
+    
+        for m, h in enumerate(self.HaresPopulation):
             """
-            Update the population of lynx, let them reproduce if possible.
+            Let the Hares reproduce by themselves.
             """
-            for n, l2 in enumerate(self.LynxPopulation):
-                if abs(l1.position[0] - l1.position[0]) <= self.breedDistLynx \
-                    and abs(l1.position[1] - l2.position[1] <= self.breedDistLynx) \
-                        and l1.state == 'M' and l2.state == 'F' \
-                            and ((t - l1.lastbreed and t - l2.lastbreed) > 90 or l1.lastbreed==l2.lastbreed==0):
-                    l1.breed(l2, self.breedProbLynx)
+            if h.state == 'F' or h.state == 'M':
+                h.breed(probbreedHares)
+                               
+     #   for m, l1 in enumerate(self.LynxPopulation):
+     #       """
+     #       Update the population of lynx, let them reproduce if possible.
+     #       """
+     #       for n, l2 in enumerate(self.LynxPopulation):
+     #           if abs(l1.position[0] - l1.position[0]) <= self.breedDistLynx \
+     #               and abs(l1.position[1] - l2.position[1] <= self.breedDistLynx) \
+     #                   and l1.state == 'M' and l2.state == 'F' \
+      #                      and ((t - l1.lastbreed and t - l2.lastbreed) > 90 or l1.lastbreed==l2.lastbreed==0):
+      #              l1.breed(l2, self.breedProbLynx)
+        
+        for m, l in enumerate(self.LynxPopulation):
+            """
+            Let the lynx reproduce by themselves.
+            """
+            if l.state == 'M' or l.state == 'F':
+                l.breed(probbreedLynx)
                 
-                            
         """
         Update the data/statistics e.g. infectedCount,
                       deathCount, etc.
         Reset the Lynx to be hungry again
-        Lynx die of starvation if not eaten enough
+        Lynx die of starvation if not eaten enough, they need to atleast eat 3 hares in the last
+        14 timesteps to survive.
         """
         eaten_list = []
         saturation_list = []
-        for o, l in enumerate (self.LynxPopulation):
+        for o, l in enumerate(self.LynxPopulation):
             l.eathistory.append(l.hungry)
             eaten_list.append(l.eathistory[-1:])
             
-            saturation_list.append(sum(l.eathistory[-30:]))
+            saturation_list.append(sum(l.eathistory[-14:]))
             
-            if sum(l.eathistory[-30:]) < 7 and l.time_born > 30:
+            if sum(l.eathistory[-14:]) < 3 and l.time_born > 30:
                 self.LynxDeathCount += 1
                 self.LynxPopulation.remove(l)
                     
             l.hungry = 0
-          
+           
         PreyAvailability = np.mean(eaten_list)
         SaturationLynx = np.mean(saturation_list)
+        
         return len(self.LynxPopulation), len(self.HaresPopulation), PreyAvailability, SaturationLynx
 
 
 class Lynx:
-    def __init__(self, x, y, state, model, time_born, hungry, time_hungry):
+    def __init__(self, x, y, state, model):
         """
         Class to model the lynx. Each lynx is initialized with a random
         position on the grid.
@@ -181,11 +223,13 @@ class Lynx:
         self.position = [x, y]
         self.model = model
         self.state = state
-        self.time_born = time_born
-        self.hungry = hungry
-        self.time_hungry = time_hungry
+        self.time_born = 0
+        self.hungry = 0
+        self.time_hungry = 0
         self.eathistory = []
         self.lastbreed = 0
+        self.huntDistance = 3
+        self.speed = 1
 
     def hunt(self, hare, killProb):
         """
@@ -196,7 +240,7 @@ class Lynx:
         After a hares hunts and kills, it will add its hares to its eaten tally. If it has
         eaten 3 hares, it wont kill any other hares nearby.
         """
-        if np.random.uniform() <= killProb and self.hungry < 1:
+        if np.random.uniform() <= killProb and self.hungry < 3:
             self.model.HaresDeathCount += 1
             self.model.HaresPopulation.remove(hare)
             self.hungry +=1
@@ -205,21 +249,24 @@ class Lynx:
 
     def move(self, height, width):
         """
-        Moves the lynx one step in a random direction.
-        """
-        speed_increase=1
-        self.huntDistance = 4
+        Moves the lynx one step in a random direction. The more hungry the lynxes are, the 'intenser'
+        they will hunt.
+        """      
+        deltaX = np.random.randint(-2, 3)
+        deltaY = np.random.randint(-2, 3)
         
-        deltaX = np.random.randint(-3, 4)
-        deltaY = np.random.randint(-3, 4)
-        
-        if np.sum(self.eathistory[-10:]) < 3 and self.time_born > 10:
+        if np.sum(self.eathistory[-3:]) < 3 and self.time_born > 10:
             self.huntDistance = 6
             
-        if np.sum(self.eathistory[-20:]) < 7 and self.time_born > 20:
-            if np.random.uniform() < 0.2:
-                speed_increase = 2
-            self.huntDistance= 8
+        if np.sum(self.eathistory[-7:]) < 3 and self.time_born > 20:
+            #if np.random.uniform() < 0.2:
+            self.speed = 2
+            self.huntDistance = 8
+        
+        else:
+            self.speed = 1
+            self.huntDistance = 3
+            
         """
         The hares may not leave the grid. There are two options:
                       - fixed boundaries: if the lynx wants to move off the
@@ -231,10 +278,10 @@ class Lynx:
             self.xdirection = deltaX
             self.ydirection = deltaY
         
-        self.position[0] = (self.position[0] + self.xdirection*speed_increase) % width
-        self.position[1] = (self.position[1] + self.ydirection*speed_increase) % height
+        self.position[0] = (self.position[0] + self.xdirection*self.speed) % width
+        self.position[1] = (self.position[1] + self.ydirection*self.speed) % height
     
-    def breed(self, lynx2, breedProbLynx):
+    def breed(self, breedProbLynx):
         """
         Determines whether two nearby female and male lynx actually reproduce or not.
         """
@@ -246,17 +293,14 @@ class Lynx:
             """
             
             self.lastbreed = 1 if t==0 else t
-            lynx2.lastbreed = 1 if t==0 else t
+            #lynx2.lastbreed = 1 if t==0 else t
             
             state = 'B'  # B for baby
-            time_born = 0
-            hungry = 0
-            time_hungry = 0
-            self.model.LynxPopulation.append(Lynx(x, y, state, self.model, time_born, hungry, time_hungry))
+            self.model.LynxPopulation.append(Lynx(x, y, state, self.model))
 
 
 class Hare:
-    def __init__(self, x, y, state, model, time_born):
+    def __init__(self, x, y, state, model):
         """
         Class to model the hares. Each hare is initialized with a random
         position on the grid. Hares start out neutral for now.
@@ -271,8 +315,8 @@ class Hare:
         """
         Moves the hares one step in a random direction.
         """
-        deltaX = np.random.randint(-1, 2)
-        deltaY = np.random.randint(-1, 2)
+        deltaX = np.random.randint(-2, 3)
+        deltaY = np.random.randint(-2, 3)
         """
         The hares may not leave the grid. There are two options:
                       - fixed boundaries: if the hares wants to move off the
@@ -283,9 +327,10 @@ class Hare:
         self.position[0] = (self.position[0] + deltaX) % width
         self.position[1] = (self.position[1] + deltaY) % height
     
-    def breed(self, hare2, breedProbHares):
+    def breed(self, breedProbHares):
         """
-        Determines whether two nearby female and male hares actually reproduce or not.
+        Determines whether two nearby female and male hares actually reproduce or not. We include
+        the fact that hares reproduce worse when lynx population amount increases
         """
         if np.random.uniform() <= breedProbHares:
             x = self.position[0]
@@ -294,27 +339,26 @@ class Hare:
             Hares may have overlapping positions.
             """
             self.lastbreed = t
-            hare2.lastbreed = t
+           # hare2.lastbreed = t
             
             state = 'B'  # B for baby
-            time_born = 0
-            self.model.HaresPopulation.append(Hare(x, y, state, self.model, time_born))
+            self.model.HaresPopulation.append(Hare(x, y, state, self.model))
             
-
+state=0
 if __name__ == '__main__':
     """
     Simulation parameters
     """
+    np.random.seed(state)
     fileName = 'simulation'
-    timeSteps = 400
+    timeSteps = 200
     t = 0
     plotData = True
     """
     Run a simulation for an indicated number of timesteps.
     """
     file = open(fileName + '.csv', 'w')
-    sim = Model(breedProbHares=0.9, breedProbLynx=0.7, nHares=1500, nLynx = 6, killProb=1, \
-                huntDistance=5, breedDistLynx=20, breedDistHares=1)
+    sim = Model(nHares=500)
     vis = vis_code_luuk.Visualization(sim.height, sim.width)
     print('Starting simulation')
     while t < timeSteps:
@@ -322,7 +366,7 @@ if __name__ == '__main__':
         sim.update()  # Catch the data
         line = str(t) + ',' + str(d1) + ',' + str(d2) + ',' + str(d3) + ',' + str(d4) +  '\n'  # Separate the data with commas
         file.write(line)  # Write the data to a .csv file
-        vis.update(t, sim.LynxPopulation, sim.HaresPopulation)
+        vis.update(t, sim.LynxPopulation, sim.HaresPopulation, sim.environment)
         t += 1
     file.close()
     vis.persist()
