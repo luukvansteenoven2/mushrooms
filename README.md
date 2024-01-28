@@ -1,4 +1,4 @@
-# Project Title: Mushroom Fairy Rings
+# Project Title: An investigation into predator and prey population dynamics
 
 ## Description
 
